@@ -146,15 +146,15 @@
   .field input::placeholder{color:var(--ink-faint);}
   .amount-input{font-family:'Inter','Noto Sans TC',sans-serif;font-size:24px;font-weight:700;text-align:right;font-variant-numeric:tabular-nums;}
   .cat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;}
-  .cat-chip{border:1px solid var(--glass-line);background:rgba(255,255,255,0.15);border-radius:12px;padding:10px 4px;text-align:center;font-size:11px;cursor:pointer;color:var(--ink-soft);}
+  .cat-chip{border:none;background:rgba(255,255,255,0.15);border-radius:12px;padding:10px 4px;text-align:center;font-size:11px;cursor:pointer;color:var(--ink-soft);}
   .cat-chip .ico{font-size:18px;display:block;margin-bottom:4px;}
-  .cat-chip.active{border-color:var(--neutral-solid);background:rgba(255,255,255,0.6);color:var(--ink);font-weight:700;}
-  .seg{display:flex;border:1px solid var(--glass-line);border-radius:12px;overflow:hidden;}
+  .cat-chip.active{background:rgba(255,255,255,0.6);color:var(--ink);font-weight:700;}
+  .seg{display:flex;border:none;border-radius:12px;overflow:hidden;}
   .seg button{flex:1;padding:11px;background:rgba(255,255,255,0.45);border:none;font-size:14px;color:var(--ink-soft);cursor:pointer;font-weight:600;}
   .seg button.active{background:var(--neutral-solid);color:#fff;}
   .btn-primary{width:100%;padding:14px;border-radius:12px;background:var(--neutral-solid);color:#fff;border:none;font-size:15px;font-weight:700;cursor:pointer;margin-top:4px;}
   .btn-primary:active{opacity:0.85;}
-  .btn-ghost{width:100%;padding:12px;border-radius:12px;background:rgba(255,255,255,0.4);color:var(--ink-soft);border:1px solid var(--glass-line);font-size:13px;font-weight:600;cursor:pointer;margin-top:8px;}
+  .btn-ghost{width:100%;padding:12px;border-radius:12px;background:rgba(255,255,255,0.4);color:var(--ink-soft);border:none;font-size:13px;font-weight:600;cursor:pointer;margin-top:8px;}
 
   /* Lists */
   .day-group{margin-bottom:16px;}
@@ -176,7 +176,7 @@
   .nav-btn.active{color:var(--neutral-solid);}
 
   .settle-btn{background:var(--neutral-solid);color:#fff;border:none;border-radius:10px;padding:10px;font-size:13px;font-weight:700;cursor:pointer;width:100%;margin-top:6px;}
-  .subtle-btn{background:none;border:1px dashed var(--glass-line);border-radius:10px;padding:9px;font-size:12px;color:var(--ink-soft);cursor:pointer;width:100%;margin-top:8px;font-weight:600;}
+  .subtle-btn{background:rgba(255,255,255,0.15);border:none;border-radius:10px;padding:9px;font-size:12px;color:var(--ink-soft);cursor:pointer;width:100%;margin-top:8px;font-weight:600;}
 
   #ledger-toast{
     position:absolute;left:50%;bottom:96px;
