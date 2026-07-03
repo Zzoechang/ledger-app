@@ -177,6 +177,18 @@
 
   .settle-btn{background:var(--neutral-solid);color:#fff;border:none;border-radius:10px;padding:10px;font-size:13px;font-weight:700;cursor:pointer;width:100%;margin-top:6px;}
   .subtle-btn{background:none;border:1px dashed var(--glass-line);border-radius:10px;padding:9px;font-size:12px;color:var(--ink-soft);cursor:pointer;width:100%;margin-top:8px;font-weight:600;}
+
+  #ledger-toast{
+    position:absolute;left:50%;bottom:96px;
+    transform:translateX(-50%) translateY(10px);
+    background:var(--neutral-solid);color:#fff;
+    padding:10px 20px;border-radius:20px;
+    font-size:13px;font-weight:600;white-space:nowrap;
+    box-shadow:0 8px 24px rgba(0,0,0,0.22);
+    opacity:0;pointer-events:none;z-index:10;
+    transition:opacity .25s ease, transform .25s ease;
+  }
+  #ledger-toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
 </style>
 </head>
 <body>
@@ -185,6 +197,7 @@
   <div class="bg-scenery"></div>
   <div id="ledger-body"></div>
   <div id="ledger-nav"></div>
+  <div id="ledger-toast"></div>
 </div>
 
 <script>
@@ -208,7 +221,21 @@
 
   const STORAGE_KEY = 'ledger:v1:en';
   let state = null;
-  let ui = { tab:'dashboard', month: monthKey(new Date()), txCat:'food', settleDir:'p2m' };
+  let ui = {
+    tab:'dashboard', month: monthKey(new Date()), txCat:'food', settleDir:'p2m',
+    txAmount:'', txDate: todayStr(), txNote:'',
+    sharedAmount:'', sharedDate: todayStr(), sharedNote:'',
+    settleAmount:''
+  };
+  let toastTimer = null;
+  function showToast(msg){
+    const el = document.getElementById('ledger-toast');
+    if(!el) return;
+    el.textContent = msg;
+    el.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(()=>{ el.classList.remove('show'); }, 1600);
+  }
 
   function monthKey(d){ return d.toISOString().slice(0,7); }
   function todayStr(){ return new Date().toISOString().slice(0,10); }
@@ -445,7 +472,7 @@
       <div class="top-header"><div><div class="app-title">ADD ENTRY</div><div class="month-label serif">New Entry</div></div></div>
       <div class="card">
         <div class="field">
-          <input type="number" inputmode="decimal" id="tx-amount" class="amount-input" placeholder="0" />
+          <input type="number" inputmode="decimal" id="tx-amount" class="amount-input" placeholder="0" value="${ui.txAmount}" />
         </div>
         <div class="field">
           <label>Category</label>
@@ -453,11 +480,11 @@
         </div>
         <div class="field">
           <label>Date</label>
-          <input type="date" id="tx-date" value="${todayStr()}" />
+          <input type="date" id="tx-date" value="${ui.txDate||todayStr()}" />
         </div>
         <div class="field">
           <label>Note (optional)</label>
-          <input type="text" id="tx-note" placeholder="e.g. foodpanda dinner" />
+          <input type="text" id="tx-note" placeholder="e.g. foodpanda dinner" value="${escapeHtml(ui.txNote)}" />
         </div>
         <button class="btn-primary" id="tx-submit">Add Entry</button>
       </div>
@@ -514,15 +541,15 @@
           </div>
         </div>
         <div class="field">
-          <input type="number" inputmode="decimal" id="shared-amount" class="amount-input" placeholder="0" />
+          <input type="number" inputmode="decimal" id="shared-amount" class="amount-input" placeholder="0" value="${ui.sharedAmount}" />
         </div>
         <div class="field">
           <label>Date</label>
-          <input type="date" id="shared-date" value="${todayStr()}" />
+          <input type="date" id="shared-date" value="${ui.sharedDate||todayStr()}" />
         </div>
         <div class="field">
           <label>Note (optional)</label>
-          <input type="text" id="shared-note" placeholder="e.g. July shared card bill" />
+          <input type="text" id="shared-note" placeholder="e.g. July shared card bill" value="${escapeHtml(ui.sharedNote)}" />
         </div>
         <button class="btn-primary" id="shared-submit">Add Entry</button>
       </div>
@@ -537,7 +564,7 @@
           </div>
         </div>
         <div class="field">
-          <input type="number" inputmode="decimal" id="settle-amount" class="amount-input" placeholder="0" />
+          <input type="number" inputmode="decimal" id="settle-amount" class="amount-input" placeholder="0" value="${ui.settleAmount}" />
         </div>
         <button class="btn-primary" id="settle-submit">Log Transfer</button>
       </div>
@@ -656,8 +683,10 @@
       const date = document.getElementById('tx-date').value || todayStr();
       const note = document.getElementById('tx-note').value.trim();
       state.transactions.push({ id:uid(), amount:amt, category:ui.txCat, date, note });
+      ui.txAmount = ''; ui.txDate = todayStr(); ui.txNote = '';
       await save();
       render();
+      showToast('Added ✓');
       return;
     }
 
@@ -684,7 +713,10 @@
       const note = document.getElementById('shared-note').value.trim();
       const payer = ui.txPayer==='partner' ? 'partner' : 'me';
       state.shared.push({ id:uid(), type:'expense', payer, amount:amt, date, note });
-      await save(); render(); return;
+      ui.sharedAmount = ''; ui.sharedDate = todayStr(); ui.sharedNote = '';
+      await save(); render();
+      showToast('Added ✓');
+      return;
     }
 
     // add settlement
@@ -693,7 +725,10 @@
       if(!amt || amt<=0){ flashInvalid('settle-amount'); return; }
       const direction = ui.settleDir==='m2p' ? 'm2p' : 'p2m';
       state.shared.push({ id:uid(), type:'settlement', direction, amount:amt, date:todayStr(), note:'' });
-      await save(); render(); return;
+      ui.settleAmount = '';
+      await save(); render();
+      showToast('Transfer logged ✓');
+      return;
     }
 
     // quick settle
@@ -702,7 +737,9 @@
       if(Math.abs(bal)<1) return;
       const direction = bal>0 ? 'p2m' : 'm2p';
       state.shared.push({ id:uid(), type:'settlement', direction, amount:Math.abs(bal), date:todayStr(), note:'Quick settle' });
-      await save(); render(); return;
+      await save(); render();
+      showToast('Settled ✓');
+      return;
     }
 
     // delete shared entry
@@ -798,6 +835,19 @@
       if(fileInput) fileInput.click();
       return;
     }
+  });
+
+  // keep in-progress form values in ui state so they survive re-renders
+  // triggered by picking a category or toggling a segmented control
+  document.getElementById('ledger-body').addEventListener('input', (e)=>{
+    const id = e.target.id;
+    if(id==='tx-amount') ui.txAmount = e.target.value;
+    else if(id==='tx-date') ui.txDate = e.target.value;
+    else if(id==='tx-note') ui.txNote = e.target.value;
+    else if(id==='shared-amount') ui.sharedAmount = e.target.value;
+    else if(id==='shared-date') ui.sharedDate = e.target.value;
+    else if(id==='shared-note') ui.sharedNote = e.target.value;
+    else if(id==='settle-amount') ui.settleAmount = e.target.value;
   });
 
   document.getElementById('ledger-body').addEventListener('change', async (e)=>{
