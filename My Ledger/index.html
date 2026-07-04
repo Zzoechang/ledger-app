@@ -33,7 +33,7 @@
     --good:#4F7C82;
     --good-solid:#F6EBC8;
     --radius:18px;
-    --glass: rgba(255,255,255,0.07);
+    --glass: rgba(255,255,255,0.22);
     --glass-strong: rgba(255,255,255,0.2);
     --glass-line: rgba(255,255,255,0.32);
     --glass-blur: 26px;
@@ -157,7 +157,7 @@
   .empty-state{text-align:center;padding:40px 10px;color:var(--ink-faint);font-size:13px;}
 
   /* Bottom nav */
-  #ledger-nav{position:relative;flex-shrink:0;background:rgba(255,253,248,0.28);backdrop-filter:blur(26px);-webkit-backdrop-filter:blur(26px);border-top:1px solid var(--glass-line);display:flex;padding:8px 6px calc(14px + env(safe-area-inset-bottom));z-index:2;}
+  #ledger-nav{position:relative;flex-shrink:0;background:rgba(255,253,248,0.28);backdrop-filter:blur(26px);-webkit-backdrop-filter:blur(26px);border-top:1px solid var(--glass-line);display:flex;padding-top:8px;padding-left:6px;padding-right:6px;padding-bottom:calc(14px + env(safe-area-inset-bottom, 0px));z-index:2;}
   .nav-btn{flex:1;background:none;border:none;display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px 2px;cursor:pointer;color:var(--ink-faint);font-size:10px;font-weight:600;}
   .nav-btn .n-ico{font-size:19px;}
   .nav-btn.active{color:var(--neutral-solid);}
@@ -470,27 +470,35 @@
       </div>`).join('');
 
     const list = [...state.shared].sort((a,b)=>b.date.localeCompare(a.date)||b.id.localeCompare(a.id));
-    const listHtml = list.length ? list.map(e=>{
-      let desc, amtTxt, ico;
-      if(e.type==='expense'){
-        desc = (e.payer==='me'?'You':'They') + ' charged the shared card · ' + (cm[e.category]?.label||'Other');
-        amtTxt = fmt(e.amount) + ' (half: ' + fmt(e.amount/2) + ')';
-        ico = cm[e.category]?.icon || '💳';
-      } else {
-        desc = e.direction==='p2m' ? 'They transferred to you' : 'You transferred to them';
-        amtTxt = fmt(e.amount);
-        ico = '💸';
-      }
-      return `<div class="tx-row">
-        <div class="tx-ico">${ico}</div>
-        <div class="tx-mid">
-          <div class="tx-cat">${desc}</div>
-          <div class="tx-note">${e.date}${e.note?' · '+escapeHtml(e.note):''}</div>
-        </div>
-        <div class="tx-amt">${amtTxt}</div>
-        <button class="tx-del" data-del-shared="${e.id}">✕</button>
-      </div>`;
-    }).join('') : `<div class="empty-state">No split entries yet</div>`;
+    const sharedGroups = {};
+    list.forEach(e=>{ (sharedGroups[e.date] = sharedGroups[e.date]||[]).push(e); });
+    const sharedDays = Object.keys(sharedGroups).sort((a,b)=>b.localeCompare(a));
+    const listHtml = sharedDays.length ? sharedDays.map(d=>`
+      <div class="day-group">
+        <div class="day-label">${d}</div>
+        ${sharedGroups[d].map(e=>{
+          let desc, amtTxt, ico;
+          if(e.type==='expense'){
+            desc = (e.payer==='me'?'You':'They') + ' charged the shared card · ' + (cm[e.category]?.label||'Other');
+            amtTxt = fmt(e.amount) + ' (half: ' + fmt(e.amount/2) + ')';
+            ico = cm[e.category]?.icon || '💳';
+          } else {
+            desc = e.direction==='p2m' ? 'They transferred to you' : 'You transferred to them';
+            amtTxt = fmt(e.amount);
+            ico = '💸';
+          }
+          return `<div class="tx-row">
+            <div class="tx-ico">${ico}</div>
+            <div class="tx-mid">
+              <div class="tx-cat">${desc}</div>
+              ${e.note ? `<div class="tx-note">${escapeHtml(e.note)}</div>` : ''}
+            </div>
+            <div class="tx-amt">${amtTxt}</div>
+            <button class="tx-del" data-del-shared="${e.id}">✕</button>
+          </div>`;
+        }).join('')}
+      </div>
+    `).join('') : `<div class="empty-state">No split entries yet</div>`;
 
     return `
       <div class="top-header"><div><div class="app-title">SHARED CARD</div><div class="month-label serif">Split Tracking</div></div></div>
@@ -501,7 +509,7 @@
           <label>Who paid?</label>
           <div class="seg">
             <button data-payer="me" class="${ui.txPayer!=='partner'?'active':''}">I did</button>
-            <button data-payer="partner" class="${ui.txPayer==='partner'?'active':''}">They did</button>
+            <button data-payer="partner" class="${ui.txPayer==='partner'?'active':''}">Poni did</button>
           </div>
         </div>
         <div class="field">
@@ -870,6 +878,12 @@
   if('serviceWorker' in navigator){
     window.addEventListener('load', ()=>{
       navigator.serviceWorker.register('sw.js').catch(()=>{});
+    });
+    let refreshedOnce = false;
+    navigator.serviceWorker.addEventListener('controllerchange', ()=>{
+      if(refreshedOnce) return;
+      refreshedOnce = true;
+      location.reload();
     });
   }
 })();
