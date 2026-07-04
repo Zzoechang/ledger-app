@@ -160,7 +160,7 @@
   .empty-state{text-align:center;padding:40px 10px;color:var(--ink-faint);font-size:13px;}
 
   /* Bottom nav */
-  #ledger-nav{position:relative;flex-shrink:0;background:rgba(255,253,248,0.28);backdrop-filter:blur(26px);-webkit-backdrop-filter:blur(26px);border-top:1px solid var(--glass-line);display:flex;padding-top:8px;padding-left:6px;padding-right:6px;padding-bottom:calc(14px + env(safe-area-inset-bottom, 0px));z-index:2;}
+  #ledger-nav{position:relative;flex-shrink:0;background:rgba(238,232,222,0.86);backdrop-filter:blur(26px);-webkit-backdrop-filter:blur(26px);border-top:1px solid var(--glass-line);display:flex;padding-top:8px;padding-left:6px;padding-right:6px;padding-bottom:calc(14px + env(safe-area-inset-bottom, 0px));z-index:2;}
   .nav-btn{flex:1;background:none;border:none;display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px 2px;cursor:pointer;color:var(--ink-faint);font-size:10px;font-weight:600;}
   .nav-btn .n-ico{font-size:19px;}
   .nav-btn.active{color:var(--neutral-solid);}
@@ -194,59 +194,32 @@
   <div id="ledger-nav"></div>
   <div id="ledger-toast"></div>
 </div>
-<div id="debug-badge" style="position:fixed;top:0;left:0;right:0;background:#ff2d55;color:#fff;font-size:11px;line-height:1.4;padding:4px 6px;z-index:99999;font-family:monospace;white-space:pre-wrap;"></div>
 
 <script>
 (function(){
-  // TEMPORARY diagnostic build tag + on-screen debug badge — remove once
-  // the standalone-mode bottom-gap issue is root-caused.
-  const BUILD_TAG = 'debug-6';
-  function measureEnv(prop){
+  function measureSafeAreaTop(){
     const div = document.createElement('div');
     div.style.position = 'absolute';
     div.style.visibility = 'hidden';
-    div.style.paddingTop = `env(${prop}, 0px)`;
+    div.style.paddingTop = 'env(safe-area-inset-top, 0px)';
     document.body.appendChild(div);
     const val = parseFloat(getComputedStyle(div).paddingTop) || 0;
     document.body.removeChild(div);
     return val;
   }
-  function updateDebugBadge(){
-    const badge = document.getElementById('debug-badge');
-    if(!badge) return;
-    const nav = document.getElementById('ledger-nav');
-    const rect = nav ? nav.getBoundingClientRect() : null;
-    const root = document.getElementById('ledger-root');
-    const rootRect = root ? root.getBoundingClientRect() : null;
-    const standalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
-    const vv = window.visualViewport;
-    badge.textContent =
-      `build:${BUILD_TAG} standalone:${standalone}\n` +
-      `innerH:${window.innerHeight} clientH:${document.documentElement.clientHeight} screenH:${window.screen.height}\n` +
-      `vvH:${vv?vv.height.toFixed(1):'n/a'} vvOffTop:${vv?vv.offsetTop.toFixed(1):'n/a'}\n` +
-      `safeTop:${measureEnv('safe-area-inset-top')} safeBot:${measureEnv('safe-area-inset-bottom')}\n` +
-      `appHeightVar:${getComputedStyle(document.documentElement).getPropertyValue('--app-height')}\n` +
-      `rootTop:${rootRect?rootRect.top.toFixed(1):'?'} rootBottom:${rootRect?rootRect.bottom.toFixed(1):'?'}\n` +
-      `navBottom:${rect?rect.bottom.toFixed(1):'?'}`;
-  }
 
-  // iOS standalone (Add to Home Screen) mode reports window.innerHeight as
-  // if the top safe-area inset were already excluded, while position:fixed
-  // elements still start at the true top (y=0, under the notch, per
-  // viewport-fit=cover) — so sizing the shell to innerHeight alone left it
-  // short of the true bottom edge. Debug data confirmed the exact relation:
-  // screen.height === visualViewport.height + safe-area-inset-top (844 ===
-  // 797 + 47 on the test device) — BOTH innerHeight and visualViewport.height
-  // are shorted by the top inset in this standalone context, not just one of
-  // them. Previous build only added the compensation in the innerHeight
-  // fallback branch and skipped it when visualViewport existed — that was
-  // the bug. Apply it unconditionally now.
+  // iOS standalone (Add to Home Screen) mode reports both innerHeight and
+  // visualViewport.height as if the top safe-area inset were already
+  // excluded, while position:fixed elements still start at the true top
+  // (y=0, under the notch, per viewport-fit=cover) — so sizing the shell to
+  // either of those alone leaves it exactly safe-area-inset-top short of the
+  // true bottom edge. Add that inset back to whichever raw height source is
+  // available.
   function setAppHeight(){
     const vv = window.visualViewport;
     const rawH = vv ? vv.height : window.innerHeight;
-    const h = rawH + measureEnv('safe-area-inset-top');
+    const h = rawH + measureSafeAreaTop();
     document.documentElement.style.setProperty('--app-height', h + 'px');
-    updateDebugBadge();
   }
   setAppHeight();
   window.addEventListener('resize', setAppHeight);
@@ -254,7 +227,6 @@
   if(window.visualViewport){
     window.visualViewport.addEventListener('resize', setAppHeight);
   }
-  setInterval(updateDebugBadge, 1000);
 
   const DEFAULT_CATS = [
     {key:'rent', label:'房租', icon:'🏠', archived:false},
