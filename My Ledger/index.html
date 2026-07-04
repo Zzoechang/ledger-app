@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
 <title>My Ledger</title>
 <meta name="description" content="Personal budgeting and shared-expense tracker" />
-<meta name="theme-color" content="#A6A49D" />
+<meta name="theme-color" content="#E8E6DC" />
 <meta name="mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -18,8 +18,8 @@
 
   :root{
     --ink:#242220;
-    --ink-soft:#5C5A4F;
-    --ink-faint:#86847A;
+    --ink-soft:#6B6A5E;
+    --ink-faint:#A6A69A;
     --paper:rgba(0,0,0,0.07);
     --card:#FFFFFF;
     --line:rgba(0,0,0,0.1);
@@ -43,7 +43,7 @@
     height:100%;
     margin:0;
     overscroll-behavior:none;
-    background:#A6A49D;
+    background:#E8E6DC;
   }
   #ledger-root{
     font-family:'Inter','Noto Sans TC',-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif;
@@ -62,14 +62,14 @@
   .bg-scenery{
     position:absolute; inset:0; z-index:0; overflow:hidden;
     background:
-      radial-gradient(46% 40% at 10% 14%, rgba(166,118,98,0.55) 0%, transparent 65%),
-      radial-gradient(50% 42% at 88% 10%, rgba(163,161,154,0.6) 0%, transparent 62%),
-      radial-gradient(52% 44% at 82% 62%, rgba(152,160,161,0.6) 0%, transparent 64%),
-      radial-gradient(46% 38% at 14% 60%, rgba(168,148,133,0.5) 0%, transparent 60%),
-      radial-gradient(50% 42% at 40% 92%, rgba(154,161,162,0.5) 0%, transparent 62%),
-      radial-gradient(44% 36% at 92% 94%, rgba(166,118,98,0.4) 0%, transparent 60%),
-      radial-gradient(40% 34% at 55% 40%, rgba(170,166,160,0.55) 0%, transparent 66%),
-      #A6A49D;
+      radial-gradient(46% 40% at 10% 14%, rgba(232,165,137,0.55) 0%, transparent 65%),
+      radial-gradient(50% 42% at 88% 10%, rgba(228,225,216,0.6) 0%, transparent 62%),
+      radial-gradient(52% 44% at 82% 62%, rgba(213,224,225,0.6) 0%, transparent 64%),
+      radial-gradient(46% 38% at 14% 60%, rgba(235,207,186,0.5) 0%, transparent 60%),
+      radial-gradient(50% 42% at 40% 92%, rgba(216,225,227,0.5) 0%, transparent 62%),
+      radial-gradient(44% 36% at 92% 94%, rgba(232,165,137,0.4) 0%, transparent 60%),
+      radial-gradient(40% 34% at 55% 40%, rgba(238,232,224,0.55) 0%, transparent 66%),
+      #E8E6DC;
   }
   .bg-scenery::after{
     content:'';
@@ -109,19 +109,6 @@
   .ring-stats .delta{font-size:12px;margin-top:8px;font-weight:600;}
   .delta.up{color:var(--warn);}
   .delta.down{color:var(--good);}
-
-  .truth-row{display:flex;justify-content:space-between;align-items:baseline;padding:8px 0;border-bottom:1px dashed var(--line);}
-  .truth-row:last-child{border-bottom:none;}
-  .truth-row .t-label{font-size:13px;color:var(--ink-soft);}
-  .truth-row .t-val{font-size:15px;font-weight:600;}
-  .truth-gap{margin-top:10px;padding:10px 12px;border-radius:10px;background:var(--warn-soft);color:var(--warn);font-size:13px;font-weight:600;text-align:center;}
-  .truth-gap.zero{background:var(--neutral-solid);color:#fff;}
-
-  .balance-hero{text-align:center;padding:8px 0 4px;}
-  .balance-hero .who{font-size:13px;color:var(--ink-soft);margin-bottom:4px;}
-  .balance-hero .amt{font-size:32px;font-weight:700;}
-  .balance-hero .amt.owe{color:var(--warn);}
-  .balance-hero .amt.owed{color:var(--good);}
 
   .cat-bar-row{margin-bottom:14px;}
   .cat-bar-top{display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px;}
@@ -175,8 +162,13 @@
   .nav-btn .n-ico{font-size:19px;}
   .nav-btn.active{color:var(--neutral-solid);}
 
-  .settle-btn{background:var(--neutral-solid);color:#fff;border:none;border-radius:10px;padding:10px;font-size:13px;font-weight:700;cursor:pointer;width:100%;margin-top:6px;}
   .subtle-btn{background:rgba(255,255,255,0.15);border:none;border-radius:10px;padding:9px;font-size:12px;color:var(--ink-soft);cursor:pointer;width:100%;margin-top:8px;font-weight:600;}
+
+  .budget-row{display:flex;align-items:center;gap:6px;margin-bottom:14px;}
+  .budget-row-main{flex:1;min-width:0;}
+  .budget-row-main label{display:block;font-size:12px;color:var(--ink-soft);margin-bottom:6px;font-weight:600;}
+  .drag-handle{flex-shrink:0;padding:8px 6px;font-size:16px;color:var(--ink-faint);cursor:grab;touch-action:none;user-select:none;}
+  .budget-row.dragging{opacity:0.55;}
 
   #ledger-toast{
     position:absolute;left:50%;bottom:96px;
@@ -222,10 +214,9 @@
   const STORAGE_KEY = 'ledger:v1:en';
   let state = null;
   let ui = {
-    tab:'dashboard', month: monthKey(new Date()), txCat:'food', settleDir:'p2m',
+    tab:'dashboard', month: monthKey(new Date()), txCat:null,
     txAmount:'', txDate: todayStr(), txNote:'',
-    sharedAmount:'', sharedDate: todayStr(), sharedNote:'', sharedCat:'other',
-    settleAmount:''
+    sharedAmount:'', sharedDate: todayStr(), sharedNote:'', sharedCat:null
   };
   let toastTimer = null;
   function showToast(msg){
@@ -237,8 +228,11 @@
     toastTimer = setTimeout(()=>{ el.classList.remove('show'); }, 1600);
   }
 
-  function monthKey(d){ return d.toISOString().slice(0,7); }
-  function todayStr(){ return new Date().toISOString().slice(0,10); }
+  function monthKey(d){ return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0'); }
+  function todayStr(){
+    const d = new Date();
+    return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+  }
   function fmt(n){ n = Math.round(n||0); return (n<0?'-':'') + 'NT$' + Math.abs(n).toLocaleString('en-US'); }
   function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
 
@@ -279,27 +273,18 @@
   // ---------- calculations ----------
   function txInMonth(m){ return state.transactions.filter(t=>t.date.slice(0,7)===m); }
   function sharedExpensesInMonth(m){ return state.shared.filter(e=>e.type==='expense' && e.date.slice(0,7)===m); }
-  function sharedBalance(){
-    let bal = 0;
-    state.shared.forEach(e=>{
-      if(e.type==='expense'){ bal += e.payer==='me' ? e.amount/2 : -e.amount/2; }
-      else { bal += e.direction==='p2m' ? -e.amount : e.amount; }
-    });
-    return bal;
+  function prevMonth(m){
+    let [y, mo] = m.split('-').map(Number);
+    mo -= 1;
+    if(mo < 1){ mo = 12; y -= 1; }
+    return y + '-' + String(mo).padStart(2,'0');
   }
-  function monthTruth(m){
-    let advanced=0, received=0;
-    state.shared.forEach(e=>{
-      if(e.date.slice(0,7)!==m) return;
-      if(e.type==='expense' && e.payer==='me') advanced += e.amount;
-      if(e.type==='settlement' && e.direction==='p2m') received += e.amount;
-    });
-    const owedShare = advanced/2;
-    const gap = owedShare - received;
-    return { advanced, owedShare, received, gap };
+  function nextMonth(m){
+    let [y, mo] = m.split('-').map(Number);
+    mo += 1;
+    if(mo > 12){ mo = 1; y += 1; }
+    return y + '-' + String(mo).padStart(2,'0');
   }
-  function prevMonth(m){ const d=new Date(m+'-01T00:00:00'); d.setMonth(d.getMonth()-1); return monthKey(d); }
-  function nextMonth(m){ const d=new Date(m+'-01T00:00:00'); d.setMonth(d.getMonth()+1); return monthKey(d); }
   function daysUntil(day){
     const now = new Date();
     let target = new Date(now.getFullYear(), now.getMonth(), day);
@@ -354,11 +339,6 @@
       deltaHtml = `<div class="delta ${d>=0?'up':'down'}">${d>=0?'▲':'▼'} ${Math.abs(d).toFixed(0)}% vs last month</div>`;
     }
 
-    const truth = monthTruth(m);
-    const bal = sharedBalance();
-    const balWho = bal>1 ? 'They owe you' : bal<-1 ? 'You owe them' : 'Settled up';
-    const balClass = bal>1 ? 'owed' : bal<-1 ? 'owe' : '';
-
     const dDue = daysUntil(state.settings.dueDay);
     const dPay = daysUntil(state.settings.paydayDay);
     const isUrgent = dDue<=5;
@@ -383,7 +363,7 @@
       <div class="top-header">
         <div>
           <div class="app-title">MY LEDGER</div>
-          <div class="month-label serif">${new Date(m+'-01').toLocaleString('en-US',{month:'long',year:'numeric'})}</div>
+          <div class="month-label serif">${(()=>{ const [y,mo]=m.split('-').map(Number); return new Date(y,mo-1,1).toLocaleString('en-US',{month:'long',year:'numeric'}); })()}</div>
         </div>
         <div class="month-nav">
           <button data-month="prev">‹</button>
@@ -413,24 +393,6 @@
       </div>
 
       <div class="card">
-        <div class="card-title">💳 Cash Flow Truth</div>
-        <div class="truth-row"><span class="t-label">You fronted</span><span class="t-val mono">${fmt(truth.advanced)}</span></div>
-        <div class="truth-row"><span class="t-label">Their fair share</span><span class="t-val mono">${fmt(truth.owedShare)}</span></div>
-        <div class="truth-row"><span class="t-label">Actually received</span><span class="t-val mono">${fmt(truth.received)}</span></div>
-        <div class="truth-gap ${truth.gap<=1?'zero':''}">
-          ${truth.gap>1 ? `${fmt(truth.gap)} hasn't reached you yet` : 'Settled ✓'}
-        </div>
-      </div>
-
-      <div class="card">
-        <div class="card-title">🤝 Split Balance</div>
-        <div class="balance-hero">
-          <div class="who">${balWho}</div>
-          <div class="amt ${balClass} mono">${fmt(Math.abs(bal))}</div>
-        </div>
-      </div>
-
-      <div class="card">
         <div class="card-title">By Category</div>
         ${catRows}
       </div>
@@ -445,7 +407,7 @@
 
   function renderAdd(){
     const active = activeCats();
-    if(!active.some(c=>c.key===ui.txCat)) ui.txCat = active[0]?.key;
+    if(ui.txCat && !active.some(c=>c.key===ui.txCat)) ui.txCat = null;
     const catChips = active.map(c=>`
       <div class="cat-chip ${ui.txCat===c.key?'active':''}" data-cat="${c.key}">
         <span class="ico">${c.icon}</span>${c.label}
@@ -499,12 +461,9 @@
   }
 
   function renderShared(){
-    const bal = sharedBalance();
-    const balWho = bal>1 ? 'They owe you' : bal<-1 ? 'You owe them' : 'Settled up';
-    const balClass = bal>1 ? 'owed' : bal<-1 ? 'owe' : '';
     const cm = catMap();
     const active = activeCats();
-    if(!active.some(c=>c.key===ui.sharedCat)) ui.sharedCat = active[0]?.key;
+    if(ui.sharedCat && !active.some(c=>c.key===ui.sharedCat)) ui.sharedCat = null;
     const sharedCatChips = active.map(c=>`
       <div class="cat-chip ${ui.sharedCat===c.key?'active':''}" data-shared-cat="${c.key}">
         <span class="ico">${c.icon}</span>${c.label}
@@ -537,15 +496,6 @@
       <div class="top-header"><div><div class="app-title">SHARED CARD</div><div class="month-label serif">Split Tracking</div></div></div>
 
       <div class="card">
-        <div class="balance-hero">
-          <div class="who">Current Balance</div>
-          <div class="amt ${balClass} mono">${fmt(Math.abs(bal))}</div>
-          <div class="who">${balWho}</div>
-        </div>
-        ${Math.abs(bal)>1 ? `<button class="settle-btn" id="quick-settle">Settle Up Now (${fmt(Math.abs(bal))})</button>` : ''}
-      </div>
-
-      <div class="card">
         <div class="card-title">Log a Charge</div>
         <div class="field">
           <label>Who paid?</label>
@@ -572,21 +522,6 @@
         <button class="btn-primary" id="shared-submit">Add Entry</button>
       </div>
 
-      <div class="card">
-        <div class="card-title">Log a Transfer</div>
-        <div class="field">
-          <label>Direction</label>
-          <div class="seg">
-            <button data-dir="p2m" class="${ui.settleDir!=='m2p'?'active':''}">They → Me</button>
-            <button data-dir="m2p" class="${ui.settleDir==='m2p'?'active':''}">Me → Them</button>
-          </div>
-        </div>
-        <div class="field">
-          <input type="number" inputmode="decimal" id="settle-amount" class="amount-input" placeholder="0" value="${ui.settleAmount}" />
-        </div>
-        <button class="btn-primary" id="settle-submit">Log Transfer</button>
-      </div>
-
       <div class="card-title" style="margin:4px 4px 10px;">Split History</div>
       ${listHtml}
     `;
@@ -596,12 +531,15 @@
     const rows = activeCats().map(c=>{
       const usedTx = catUsedInTx(c.key);
       return `
-      <div class="field">
-        <label>${c.icon} ${c.label} Monthly Budget</label>
-        <div style="display:flex;gap:8px;align-items:center;">
-          <input type="number" inputmode="decimal" class="mono" style="flex:1;" data-budget="${c.key}" value="${state.budgets[c.key]||0}" />
-          <button class="tx-del" title="Archive" data-archive-cat="${c.key}" style="font-size:15px;">♻︎</button>
-          ${!usedTx ? `<button class="tx-del" title="Delete" data-delete-cat="${c.key}" style="font-size:16px;">✕</button>` : ''}
+      <div class="budget-row" data-cat-key="${c.key}">
+        <div class="drag-handle" data-drag-handle>⠿</div>
+        <div class="budget-row-main">
+          <label>${c.icon} ${c.label}</label>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <input type="number" inputmode="decimal" class="mono" style="flex:1;" data-budget="${c.key}" value="${state.budgets[c.key]||0}" />
+            <button class="tx-del" title="Archive" data-archive-cat="${c.key}" style="font-size:15px;">♻︎</button>
+            ${!usedTx ? `<button class="tx-del" title="Delete" data-delete-cat="${c.key}" style="font-size:16px;">✕</button>` : ''}
+          </div>
         </div>
       </div>`;
     }).join('');
@@ -663,15 +601,15 @@
         </div>
       </div>
 
-      <div class="card">
+      <button class="btn-primary" id="settings-save">Save</button>
+      <button class="btn-ghost" id="reset-all">Reset All Data</button>
+
+      <div class="card" style="margin-top:14px;">
         <div class="card-title">Backup</div>
         <button class="btn-ghost" id="export-data">Export Data (save as file)</button>
         <button class="btn-ghost" id="import-data-btn">Import Data (restore from file)</button>
         <input type="file" id="import-file" accept=".json,application/json" style="display:none" />
       </div>
-
-      <button class="btn-primary" id="settings-save">Save</button>
-      <button class="btn-ghost" id="reset-all">Reset All Data</button>
     `;
   }
 
@@ -702,10 +640,11 @@
     if(e.target.id==='tx-submit'){
       const amt = parseFloat(document.getElementById('tx-amount').value);
       if(!amt || amt<=0){ flashInvalid('tx-amount'); return; }
+      if(!ui.txCat){ showToast('Please pick a category ⚠️'); return; }
       const date = document.getElementById('tx-date').value || todayStr();
       const note = document.getElementById('tx-note').value.trim();
       state.transactions.push({ id:uid(), amount:amt, category:ui.txCat, date, note });
-      ui.txAmount = ''; ui.txDate = todayStr(); ui.txNote = '';
+      ui.txAmount = ''; ui.txDate = todayStr(); ui.txNote = ''; ui.txCat = null;
       await save();
       render();
       showToast('Added ✓');
@@ -723,44 +662,18 @@
     const payerBtn = e.target.closest('[data-payer]');
     if(payerBtn){ ui.txPayer = payerBtn.dataset.payer; render(); return; }
 
-    // settle direction toggle
-    const dirBtn = e.target.closest('[data-dir]');
-    if(dirBtn){ ui.settleDir = dirBtn.dataset.dir; render(); return; }
-
     // add shared expense
     if(e.target.id==='shared-submit'){
       const amt = parseFloat(document.getElementById('shared-amount').value);
       if(!amt || amt<=0){ flashInvalid('shared-amount'); return; }
+      if(!ui.sharedCat){ showToast('Please pick a category ⚠️'); return; }
       const date = document.getElementById('shared-date').value || todayStr();
       const note = document.getElementById('shared-note').value.trim();
       const payer = ui.txPayer==='partner' ? 'partner' : 'me';
       state.shared.push({ id:uid(), type:'expense', payer, category:ui.sharedCat, amount:amt, date, note });
-      ui.sharedAmount = ''; ui.sharedDate = todayStr(); ui.sharedNote = '';
+      ui.sharedAmount = ''; ui.sharedDate = todayStr(); ui.sharedNote = ''; ui.sharedCat = null;
       await save(); render();
       showToast('Added ✓');
-      return;
-    }
-
-    // add settlement
-    if(e.target.id==='settle-submit'){
-      const amt = parseFloat(document.getElementById('settle-amount').value);
-      if(!amt || amt<=0){ flashInvalid('settle-amount'); return; }
-      const direction = ui.settleDir==='m2p' ? 'm2p' : 'p2m';
-      state.shared.push({ id:uid(), type:'settlement', direction, amount:amt, date:todayStr(), note:'' });
-      ui.settleAmount = '';
-      await save(); render();
-      showToast('Transfer logged ✓');
-      return;
-    }
-
-    // quick settle
-    if(e.target.id==='quick-settle'){
-      const bal = sharedBalance();
-      if(Math.abs(bal)<1) return;
-      const direction = bal>0 ? 'p2m' : 'm2p';
-      state.shared.push({ id:uid(), type:'settlement', direction, amount:Math.abs(bal), date:todayStr(), note:'Quick settle' });
-      await save(); render();
-      showToast('Settled ✓');
       return;
     }
 
@@ -869,7 +782,6 @@
     else if(id==='shared-amount') ui.sharedAmount = e.target.value;
     else if(id==='shared-date') ui.sharedDate = e.target.value;
     else if(id==='shared-note') ui.sharedNote = e.target.value;
-    else if(id==='settle-amount') ui.settleAmount = e.target.value;
   });
 
   document.getElementById('ledger-body').addEventListener('change', async (e)=>{
@@ -897,6 +809,50 @@
       }
     }
   });
+
+  // ---------- drag to reorder categories (budget tab) ----------
+  let dragState = null;
+  function budgetRows(){ return Array.from(document.querySelectorAll('.budget-row')); }
+
+  document.getElementById('ledger-body').addEventListener('pointerdown', (e)=>{
+    const handle = e.target.closest('[data-drag-handle]');
+    if(!handle) return;
+    const row = handle.closest('.budget-row');
+    if(!row) return;
+    e.preventDefault();
+    dragState = { row, pointerId: e.pointerId };
+    row.classList.add('dragging');
+    handle.setPointerCapture(e.pointerId);
+  });
+
+  document.getElementById('ledger-body').addEventListener('pointermove', (e)=>{
+    if(!dragState || dragState.pointerId !== e.pointerId) return;
+    const row = dragState.row;
+    const target = budgetRows().find(sib=>{
+      if(sib===row) return false;
+      const rect = sib.getBoundingClientRect();
+      return e.clientY >= rect.top && e.clientY <= rect.bottom;
+    });
+    if(target){
+      const rect = target.getBoundingClientRect();
+      const before = e.clientY < rect.top + rect.height/2;
+      target.parentNode.insertBefore(row, before ? target : target.nextSibling);
+    }
+  });
+
+  async function endDrag(e){
+    if(!dragState || dragState.pointerId !== e.pointerId) return;
+    dragState.row.classList.remove('dragging');
+    const newOrderKeys = budgetRows().map(r=>r.dataset.catKey);
+    const reordered = newOrderKeys.map(k=>state.categories.find(c=>c.key===k)).filter(Boolean);
+    const archived = archivedCats();
+    state.categories = [...reordered, ...archived];
+    dragState = null;
+    await save();
+    render();
+  }
+  document.getElementById('ledger-body').addEventListener('pointerup', endDrag);
+  document.getElementById('ledger-body').addEventListener('pointercancel', endDrag);
 
   function flashInvalid(id){
     const el = document.getElementById(id);
