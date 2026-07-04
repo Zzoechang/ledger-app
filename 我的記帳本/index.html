@@ -200,7 +200,7 @@
 (function(){
   // TEMPORARY diagnostic build tag + on-screen debug badge — remove once
   // the standalone-mode bottom-gap issue is root-caused.
-  const BUILD_TAG = 'debug-5';
+  const BUILD_TAG = 'debug-6';
   function measureEnv(prop){
     const div = document.createElement('div');
     div.style.position = 'absolute';
@@ -234,14 +234,17 @@
   // if the top safe-area inset were already excluded, while position:fixed
   // elements still start at the true top (y=0, under the notch, per
   // viewport-fit=cover) — so sizing the shell to innerHeight alone left it
-  // short of the true bottom edge. First compensation attempt (innerHeight +
-  // measured safe-area-inset-top) only partially closed the gap, so this
-  // build prefers window.visualViewport.height (the API Apple added
-  // specifically to report the true rendered viewport reliably) when
-  // available, falling back to the innerHeight+inset patch otherwise.
+  // short of the true bottom edge. Debug data confirmed the exact relation:
+  // screen.height === visualViewport.height + safe-area-inset-top (844 ===
+  // 797 + 47 on the test device) — BOTH innerHeight and visualViewport.height
+  // are shorted by the top inset in this standalone context, not just one of
+  // them. Previous build only added the compensation in the innerHeight
+  // fallback branch and skipped it when visualViewport existed — that was
+  // the bug. Apply it unconditionally now.
   function setAppHeight(){
     const vv = window.visualViewport;
-    const h = vv ? vv.height : (window.innerHeight + measureEnv('safe-area-inset-top'));
+    const rawH = vv ? vv.height : window.innerHeight;
+    const h = rawH + measureEnv('safe-area-inset-top');
     document.documentElement.style.setProperty('--app-height', h + 'px');
     updateDebugBadge();
   }
