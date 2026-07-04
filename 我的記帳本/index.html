@@ -56,6 +56,7 @@
     inset:0;
     height:100vh;
     height:100dvh;
+    height:var(--app-height, 100dvh);
     padding-top:env(safe-area-inset-top, 0px);
     display:flex;
     flex-direction:column;
@@ -196,6 +197,17 @@
 
 <script>
 (function(){
+  // iOS standalone (Add to Home Screen) mode has repeatedly misreported
+  // 100vh/100dvh, leaving a gap below the bottom nav that vh/dvh fixes
+  // didn't solve. window.innerHeight is the raw, reliable value regardless
+  // of viewport-unit quirks, so drive the app shell's height from that.
+  function setAppHeight(){
+    document.documentElement.style.setProperty('--app-height', window.innerHeight + 'px');
+  }
+  setAppHeight();
+  window.addEventListener('resize', setAppHeight);
+  window.addEventListener('orientationchange', setAppHeight);
+
   const DEFAULT_CATS = [
     {key:'rent', label:'房租', icon:'🏠', archived:false},
     {key:'utility', label:'水電', icon:'💡', archived:false},
