@@ -200,12 +200,12 @@
 (function(){
   // TEMPORARY diagnostic build tag + on-screen debug badge — remove once
   // the standalone-mode bottom-gap issue is root-caused.
-  const BUILD_TAG = 'debug-4';
-  function getSafeAreaTop(){
+  const BUILD_TAG = 'debug-5';
+  function measureEnv(prop){
     const div = document.createElement('div');
     div.style.position = 'absolute';
     div.style.visibility = 'hidden';
-    div.style.paddingTop = 'env(safe-area-inset-top, 0px)';
+    div.style.paddingTop = `env(${prop}, 0px)`;
     document.body.appendChild(div);
     const val = parseFloat(getComputedStyle(div).paddingTop) || 0;
     document.body.removeChild(div);
@@ -216,27 +216,41 @@
     if(!badge) return;
     const nav = document.getElementById('ledger-nav');
     const rect = nav ? nav.getBoundingClientRect() : null;
+    const root = document.getElementById('ledger-root');
+    const rootRect = root ? root.getBoundingClientRect() : null;
     const standalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+    const vv = window.visualViewport;
     badge.textContent =
       `build:${BUILD_TAG} standalone:${standalone}\n` +
-      `innerHeight:${window.innerHeight} safeTop:${getSafeAreaTop()} appHeightVar:${getComputedStyle(document.documentElement).getPropertyValue('--app-height')}\n` +
-      `navBottom:${rect?Math.round(rect.bottom):'?'} gap:${rect?Math.round(window.innerHeight-rect.bottom):'?'}`;
+      `innerH:${window.innerHeight} clientH:${document.documentElement.clientHeight} screenH:${window.screen.height}\n` +
+      `vvH:${vv?vv.height.toFixed(1):'n/a'} vvOffTop:${vv?vv.offsetTop.toFixed(1):'n/a'}\n` +
+      `safeTop:${measureEnv('safe-area-inset-top')} safeBot:${measureEnv('safe-area-inset-bottom')}\n` +
+      `appHeightVar:${getComputedStyle(document.documentElement).getPropertyValue('--app-height')}\n` +
+      `rootTop:${rootRect?rootRect.top.toFixed(1):'?'} rootBottom:${rootRect?rootRect.bottom.toFixed(1):'?'}\n` +
+      `navBottom:${rect?rect.bottom.toFixed(1):'?'}`;
   }
 
   // iOS standalone (Add to Home Screen) mode reports window.innerHeight as
   // if the top safe-area inset were already excluded, while position:fixed
   // elements still start at the true top (y=0, under the notch, per
   // viewport-fit=cover) — so sizing the shell to innerHeight alone left it
-  // exactly safe-area-inset-top short of the true bottom edge. Add that
-  // inset back onto innerHeight to compensate.
+  // short of the true bottom edge. First compensation attempt (innerHeight +
+  // measured safe-area-inset-top) only partially closed the gap, so this
+  // build prefers window.visualViewport.height (the API Apple added
+  // specifically to report the true rendered viewport reliably) when
+  // available, falling back to the innerHeight+inset patch otherwise.
   function setAppHeight(){
-    const h = window.innerHeight + getSafeAreaTop();
+    const vv = window.visualViewport;
+    const h = vv ? vv.height : (window.innerHeight + measureEnv('safe-area-inset-top'));
     document.documentElement.style.setProperty('--app-height', h + 'px');
     updateDebugBadge();
   }
   setAppHeight();
   window.addEventListener('resize', setAppHeight);
   window.addEventListener('orientationchange', setAppHeight);
+  if(window.visualViewport){
+    window.visualViewport.addEventListener('resize', setAppHeight);
+  }
   setInterval(updateDebugBadge, 1000);
 
   const DEFAULT_CATS = [
