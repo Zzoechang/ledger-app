@@ -217,14 +217,14 @@
   function activeCats(){ return state.categories.filter(c=>!c.archived); }
   function archivedCats(){ return state.categories.filter(c=>c.archived); }
   function catMap(){ const m={}; state.categories.forEach(c=>m[c.key]=c); return m; }
-  function catUsedInTx(key){ return state.transactions.some(t=>t.category===key); }
+  function catUsedInTx(key){ return state.transactions.some(t=>t.category===key) || state.shared.some(e=>e.category===key); }
 
   const STORAGE_KEY = 'ledger:v1';
   let state = null;
   let ui = {
     tab:'dashboard', month: monthKey(new Date()), txCat:'food', settleDir:'p2m',
     txAmount:'', txDate: todayStr(), txNote:'',
-    sharedAmount:'', sharedDate: todayStr(), sharedNote:'',
+    sharedAmount:'', sharedDate: todayStr(), sharedNote:'', sharedCat:'other',
     settleAmount:''
   };
   let toastTimer = null;
@@ -259,6 +259,7 @@
     }
     s.categories.forEach(c=>{ if(typeof c.archived!=='boolean') c.archived=false; });
     s.categories.forEach(c=>{ if(typeof s.budgets[c.key]!=='number') s.budgets[c.key]=0; });
+    (s.shared||[]).forEach(e=>{ if(e.type==='expense' && !e.category) e.category='other'; });
     return s;
   }
 
@@ -277,6 +278,7 @@
 
   // ---------- calculations ----------
   function txInMonth(m){ return state.transactions.filter(t=>t.date.slice(0,7)===m); }
+  function sharedExpensesInMonth(m){ return state.shared.filter(e=>e.type==='expense' && e.date.slice(0,7)===m); }
   function sharedBalance(){
     let bal = 0;
     state.shared.forEach(e=>{
@@ -332,9 +334,11 @@
   function renderDashboard(){
     const m = ui.month;
     const txs = txInMonth(m);
+    const sharedTxs = sharedExpensesInMonth(m);
     const spentByCat = {};
     allCats().forEach(c=>spentByCat[c.key]=0);
     txs.forEach(t=>{ spentByCat[t.category] = (spentByCat[t.category]||0) + t.amount; });
+    sharedTxs.forEach(e=>{ const cat = e.category||'other'; spentByCat[cat] = (spentByCat[cat]||0) + e.amount/2; });
     const totalBudget = activeCats().reduce((sum,c)=>sum+(state.budgets[c.key]||0),0);
     const totalSpent = Object.values(spentByCat).reduce((a,b)=>a+b,0);
     const pct = totalBudget>0 ? Math.round(totalSpent/totalBudget*100) : 0;
@@ -342,7 +346,8 @@
     const ringDeg = Math.min(pct,100)*3.6;
 
     const pm = prevMonth(m);
-    const prevSpent = txInMonth(pm).reduce((a,t)=>a+t.amount,0);
+    const prevSpent = txInMonth(pm).reduce((a,t)=>a+t.amount,0)
+      + sharedExpensesInMonth(pm).reduce((a,e)=>a+e.amount/2,0);
     let deltaHtml = '';
     if(prevSpent>0){
       const d = ((totalSpent-prevSpent)/prevSpent*100);
@@ -497,19 +502,28 @@
     const bal = sharedBalance();
     const balWho = bal>1 ? '他欠你' : bal<-1 ? '你欠他' : '已結清';
     const balClass = bal>1 ? 'owed' : bal<-1 ? 'owe' : '';
+    const cm = catMap();
+    const active = activeCats();
+    if(!active.some(c=>c.key===ui.sharedCat)) ui.sharedCat = active[0]?.key;
+    const sharedCatChips = active.map(c=>`
+      <div class="cat-chip ${ui.sharedCat===c.key?'active':''}" data-shared-cat="${c.key}">
+        <span class="ico">${c.icon}</span>${c.label}
+      </div>`).join('');
 
     const list = [...state.shared].sort((a,b)=>b.date.localeCompare(a.date)||b.id.localeCompare(a.id));
     const listHtml = list.length ? list.map(e=>{
-      let desc, amtTxt;
+      let desc, amtTxt, ico;
       if(e.type==='expense'){
-        desc = (e.payer==='me'?'你':'他') + ' 刷了共同卡';
+        desc = (e.payer==='me'?'你':'他') + ' 刷了共同卡 · ' + (cm[e.category]?.label||'其他');
         amtTxt = fmt(e.amount) + ' (各半 ' + fmt(e.amount/2) + ')';
+        ico = cm[e.category]?.icon || '💳';
       } else {
         desc = e.direction==='p2m' ? '他匯給你' : '你匯給他';
         amtTxt = fmt(e.amount);
+        ico = '💸';
       }
       return `<div class="tx-row">
-        <div class="tx-ico">${e.type==='expense'?'💳':'💸'}</div>
+        <div class="tx-ico">${ico}</div>
         <div class="tx-mid">
           <div class="tx-cat">${desc}</div>
           <div class="tx-note">${e.date}${e.note?' · '+escapeHtml(e.note):''}</div>
@@ -542,6 +556,10 @@
         </div>
         <div class="field">
           <input type="number" inputmode="decimal" id="shared-amount" class="amount-input" placeholder="0" value="${ui.sharedAmount}" />
+        </div>
+        <div class="field">
+          <label>分類(算入我的月花費)</label>
+          <div class="cat-grid">${sharedCatChips}</div>
         </div>
         <div class="field">
           <label>日期</label>
@@ -676,6 +694,10 @@
     const chip = e.target.closest('[data-cat]');
     if(chip){ ui.txCat = chip.dataset.cat; render(); return; }
 
+    // category chip select (shared tab)
+    const sharedChip = e.target.closest('[data-shared-cat]');
+    if(sharedChip){ ui.sharedCat = sharedChip.dataset.sharedCat; render(); return; }
+
     // add transaction
     if(e.target.id==='tx-submit'){
       const amt = parseFloat(document.getElementById('tx-amount').value);
@@ -712,7 +734,7 @@
       const date = document.getElementById('shared-date').value || todayStr();
       const note = document.getElementById('shared-note').value.trim();
       const payer = ui.txPayer==='partner' ? 'partner' : 'me';
-      state.shared.push({ id:uid(), type:'expense', payer, amount:amt, date, note });
+      state.shared.push({ id:uid(), type:'expense', payer, category:ui.sharedCat, amount:amt, date, note });
       ui.sharedAmount = ''; ui.sharedDate = todayStr(); ui.sharedNote = '';
       await save(); render();
       showToast('已新增這筆 ✓');
