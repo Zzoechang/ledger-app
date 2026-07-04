@@ -200,7 +200,17 @@
 (function(){
   // TEMPORARY diagnostic build tag + on-screen debug badge — remove once
   // the standalone-mode bottom-gap issue is root-caused.
-  const BUILD_TAG = 'debug-3';
+  const BUILD_TAG = 'debug-4';
+  function getSafeAreaTop(){
+    const div = document.createElement('div');
+    div.style.position = 'absolute';
+    div.style.visibility = 'hidden';
+    div.style.paddingTop = 'env(safe-area-inset-top, 0px)';
+    document.body.appendChild(div);
+    const val = parseFloat(getComputedStyle(div).paddingTop) || 0;
+    document.body.removeChild(div);
+    return val;
+  }
   function updateDebugBadge(){
     const badge = document.getElementById('debug-badge');
     if(!badge) return;
@@ -209,16 +219,19 @@
     const standalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
     badge.textContent =
       `build:${BUILD_TAG} standalone:${standalone}\n` +
-      `innerHeight:${window.innerHeight} appHeightVar:${getComputedStyle(document.documentElement).getPropertyValue('--app-height')}\n` +
+      `innerHeight:${window.innerHeight} safeTop:${getSafeAreaTop()} appHeightVar:${getComputedStyle(document.documentElement).getPropertyValue('--app-height')}\n` +
       `navBottom:${rect?Math.round(rect.bottom):'?'} gap:${rect?Math.round(window.innerHeight-rect.bottom):'?'}`;
   }
 
-  // iOS standalone (Add to Home Screen) mode has repeatedly misreported
-  // 100vh/100dvh, leaving a gap below the bottom nav that vh/dvh fixes
-  // didn't solve. window.innerHeight is the raw, reliable value regardless
-  // of viewport-unit quirks, so drive the app shell's height from that.
+  // iOS standalone (Add to Home Screen) mode reports window.innerHeight as
+  // if the top safe-area inset were already excluded, while position:fixed
+  // elements still start at the true top (y=0, under the notch, per
+  // viewport-fit=cover) — so sizing the shell to innerHeight alone left it
+  // exactly safe-area-inset-top short of the true bottom edge. Add that
+  // inset back onto innerHeight to compensate.
   function setAppHeight(){
-    document.documentElement.style.setProperty('--app-height', window.innerHeight + 'px');
+    const h = window.innerHeight + getSafeAreaTop();
+    document.documentElement.style.setProperty('--app-height', h + 'px');
     updateDebugBadge();
   }
   setAppHeight();
