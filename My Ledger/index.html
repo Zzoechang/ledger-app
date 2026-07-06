@@ -250,7 +250,8 @@
   let ui = {
     tab:'dashboard', month: monthKey(new Date()), txCat:null,
     txAmount:'', txDate: todayStr(), txNote:'',
-    sharedAmount:'', sharedDate: todayStr(), sharedNote:'', sharedCat:null
+    sharedAmount:'', sharedDate: todayStr(), sharedNote:'', sharedCat:null,
+    txHistoryExpanded:false, sharedHistoryExpanded:false
   };
   let toastTimer = null;
   function showToast(msg){
@@ -452,7 +453,8 @@
     const groups = {};
     list.forEach(t=>{ (groups[t.date] = groups[t.date]||[]).push(t); });
     const days = Object.keys(groups).sort((a,b)=>b.localeCompare(a));
-    const listHtml = days.length ? days.map(d=>`
+    const visibleTxDays = ui.txHistoryExpanded ? days : days.slice(0,5);
+    const listHtml = days.length ? visibleTxDays.map(d=>`
       <div class="day-group">
         <div class="day-label">${d}</div>
         ${groups[d].map(t=>`
@@ -468,6 +470,9 @@
         `).join('')}
       </div>
     `).join('') : `<div class="empty-state">Add your first entry above</div>`;
+    const txHistoryToggle = days.length > 5
+      ? `<button class="subtle-btn" id="tx-history-toggle">${ui.txHistoryExpanded ? 'Collapse' : 'Show More'}</button>`
+      : '';
 
     return `
       <div class="top-header"><div><div class="app-title">ADD ENTRY</div><div class="month-label serif">New Entry</div></div></div>
@@ -491,6 +496,7 @@
       </div>
       <div class="card-title" style="margin:4px 4px 10px;">History</div>
       ${listHtml}
+      ${txHistoryToggle}
     `;
   }
 
@@ -507,13 +513,14 @@
     const sharedGroups = {};
     list.forEach(e=>{ (sharedGroups[e.date] = sharedGroups[e.date]||[]).push(e); });
     const sharedDays = Object.keys(sharedGroups).sort((a,b)=>b.localeCompare(a));
-    const listHtml = sharedDays.length ? sharedDays.map(d=>`
+    const visibleSharedDays = ui.sharedHistoryExpanded ? sharedDays : sharedDays.slice(0,5);
+    const listHtml = sharedDays.length ? visibleSharedDays.map(d=>`
       <div class="day-group">
         <div class="day-label">${d}</div>
         ${sharedGroups[d].map(e=>{
           let desc, amtTxt, ico;
           if(e.type==='expense'){
-            desc = (e.payer==='me'?'You':'They') + ' charged the shared card · ' + (cm[e.category]?.label||'Other');
+            desc = (e.payer==='me'?'You':'Poni') + ' · ' + (cm[e.category]?.label||'Other');
             amtTxt = fmt(e.amount) + ' (half: ' + fmt(e.amount/2) + ')';
             ico = cm[e.category]?.icon || '💳';
           } else {
@@ -533,6 +540,9 @@
         }).join('')}
       </div>
     `).join('') : `<div class="empty-state">No split entries yet</div>`;
+    const sharedHistoryToggle = sharedDays.length > 5
+      ? `<button class="subtle-btn" id="shared-history-toggle">${ui.sharedHistoryExpanded ? 'Collapse' : 'Show More'}</button>`
+      : '';
 
     return `
       <div class="top-header"><div><div class="app-title">SHARED CARD</div><div class="month-label serif">Split Tracking</div></div></div>
@@ -566,6 +576,7 @@
 
       <div class="card-title" style="margin:4px 4px 10px;">Split History</div>
       ${listHtml}
+      ${sharedHistoryToggle}
     `;
   }
 
@@ -677,6 +688,10 @@
     // category chip select (shared tab)
     const sharedChip = e.target.closest('[data-shared-cat]');
     if(sharedChip){ ui.sharedCat = sharedChip.dataset.sharedCat; render(); return; }
+
+    // toggle history length (add / shared tabs)
+    if(e.target.id==='tx-history-toggle'){ ui.txHistoryExpanded = !ui.txHistoryExpanded; render(); return; }
+    if(e.target.id==='shared-history-toggle'){ ui.sharedHistoryExpanded = !ui.sharedHistoryExpanded; render(); return; }
 
     // add transaction
     if(e.target.id==='tx-submit'){
