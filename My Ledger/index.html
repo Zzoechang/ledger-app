@@ -113,6 +113,14 @@
   .delta.up{color:var(--warn);}
   .delta.down{color:var(--good);}
 
+  .pie-wrap{display:flex;align-items:center;gap:18px;}
+  .pie{width:104px;height:104px;border-radius:50%;flex-shrink:0;}
+  .pie-legend{flex:1;display:flex;flex-direction:column;gap:7px;min-width:0;}
+  .pie-legend-item{display:flex;align-items:center;gap:7px;font-size:12px;}
+  .pie-swatch{width:10px;height:10px;border-radius:3px;flex-shrink:0;}
+  .pie-legend-label{flex:1;color:var(--ink-soft);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .pie-legend-pct{color:var(--ink);font-weight:600;flex-shrink:0;}
+
   .cat-bar-row{margin-bottom:14px;}
   .cat-bar-top{display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px;}
   .cat-bar-top .cname{font-weight:600;}
@@ -238,6 +246,7 @@
     {key:'fashion', label:'Fashion', icon:'👗', archived:false},
     {key:'other', label:'Other', icon:'🔖', archived:false},
   ];
+  const PIE_COLORS = ['#7FAFB3','#E2967D','#B7A6D9','#9BB88A','#D9B96C','#D98CA0','#8CA0C4','#C4A98C'];
 
   function allCats(){ return state.categories; }
   function activeCats(){ return state.categories.filter(c=>!c.archived); }
@@ -394,6 +403,24 @@
         </div>`;
       }).join('') || `<div class="empty-state">No entries yet</div>`;
 
+    const pieCats = allCats().filter(c=>spentByCat[c.key]>0).sort((a,b)=>spentByCat[b.key]-spentByCat[a.key]);
+    const pieTotal = pieCats.reduce((sum,c)=>sum+spentByCat[c.key],0);
+    let pieCum = 0;
+    const pieStops = pieCats.map((c,i)=>{
+      const start = pieTotal>0 ? (pieCum/pieTotal*360) : 0;
+      pieCum += spentByCat[c.key];
+      const end = pieTotal>0 ? (pieCum/pieTotal*360) : 0;
+      return `${PIE_COLORS[i%PIE_COLORS.length]} ${start}deg ${end}deg`;
+    }).join(', ');
+    const pieLegend = pieCats.map((c,i)=>{
+      const pctShare = pieTotal>0 ? Math.round(spentByCat[c.key]/pieTotal*100) : 0;
+      return `<div class="pie-legend-item">
+        <span class="pie-swatch" style="background:${PIE_COLORS[i%PIE_COLORS.length]}"></span>
+        <span class="pie-legend-label">${c.icon} ${c.label}</span>
+        <span class="pie-legend-pct mono">${pctShare}%</span>
+      </div>`;
+    }).join('');
+
     return `
       <div class="top-header">
         <div>
@@ -425,6 +452,16 @@
             ${deltaHtml}
           </div>
         </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Category Breakdown</div>
+        ${pieCats.length ? `
+          <div class="pie-wrap">
+            <div class="pie" style="background:conic-gradient(${pieStops})"></div>
+            <div class="pie-legend">${pieLegend}</div>
+          </div>
+        ` : `<div class="empty-state">No entries yet</div>`}
       </div>
 
       <div class="card">
